@@ -1,16 +1,37 @@
+/*
+ * Requires Francisco Malpartida's LCD library: https://bitbucket.org/fmalpartida/new-liquidcrystal/downloads/
+ * (Download the zip file, then Sketch -> Include Library -> Add .ZIP Library)
+ * 
+ */
+
 #include <Arduino.h>
-#line 1 "C:\\Users\\Rich C\\Documents\\Processing\\controllerTest\\controllerTest.ino"
-#line 1 "C:\\Users\\Rich C\\Documents\\Processing\\controllerTest\\controllerTest.ino"
+#include <Wire.h>
+#include <LCD.h>
+#include <LiquidCrystal_I2C.h>
+
+#define I2C_ADDR    0x27 // <<----- Add your address here.  Find it from I2C Scanner
+#define BACKLIGHT_PIN     3
+#define En_pin  2
+#define Rw_pin  1
+#define Rs_pin  0
+#define D4_pin  4
+#define D5_pin  5
+#define D6_pin  6
+#define D7_pin  7
+
+LiquidCrystal_I2C  lcd(I2C_ADDR,En_pin,Rw_pin,Rs_pin,D4_pin,D5_pin,D6_pin,D7_pin);
+
 int prevVals[3];
 int minPotVar = 3;
 String prevMsg = "";
 
-#line 4 "C:\\Users\\Rich C\\Documents\\Processing\\controllerTest\\controllerTest.ino"
-void setup();
-#line 17 "C:\\Users\\Rich C\\Documents\\Processing\\controllerTest\\controllerTest.ino"
-void loop();
-#line 4 "C:\\Users\\Rich C\\Documents\\Processing\\controllerTest\\controllerTest.ino"
 void setup() {
+ lcd.begin (16,2);
+  lcd.setBacklightPin(BACKLIGHT_PIN,POSITIVE);
+  lcd.setBacklight(HIGH);
+  lcd.home (); // go home  
+  lcd.print("<< Hivemaker >>");  
+  
   prevVals[0] = -99;
   prevVals[1] = -99;
   prevVals[2] = -99;
@@ -47,6 +68,8 @@ void loop() {
     Serial.print(msg);
     prevMsg = msg;
     //Serial.print("\n");
+   lcd.setCursor (0,1);
+   lcd.print(msg);
   }
 }
 
