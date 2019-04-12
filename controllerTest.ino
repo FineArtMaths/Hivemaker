@@ -9,6 +9,14 @@
 #include <LCD.h>
 #include <LiquidCrystal_I2C.h>
 
+// Rotary encoder stuff
+volatile int lastEncoded = 0;
+volatile long encoderValue = 0;
+long lastencoderValue = 0;
+int lastMSB = 0;
+int lastLSB = 0;
+
+// LCD Disply Stuff
 #define I2C_ADDR    0x27 // <<----- Add your address here.  Find it from I2C Scanner
 #define BACKLIGHT_PIN     3
 #define En_pin  2
@@ -18,20 +26,26 @@
 #define D5_pin  5
 #define D6_pin  6
 #define D7_pin  7
-
 LiquidCrystal_I2C  lcd(I2C_ADDR,En_pin,Rw_pin,Rs_pin,D4_pin,D5_pin,D6_pin,D7_pin);
 
+// Stuff for analogue pots
 int prevVals[3];
 int minPotVar = 3;
 String prevMsg = "";
 
 void setup() {
- lcd.begin (16,2);
+  // LCD screen setup
+  lcd.begin (16,2);
   lcd.setBacklightPin(BACKLIGHT_PIN,POSITIVE);
   lcd.setBacklight(HIGH);
   lcd.home (); // go home  
   lcd.print("<< Hivemaker >>");  
-  
+
+  // Rotary encoder setup
+  digitalWrite(20, HIGH); 
+  digitalWrite(21, HIGH); 
+
+  // Analogue pot setup
   prevVals[0] = -99;
   prevVals[1] = -99;
   prevVals[2] = -99;
@@ -41,6 +55,7 @@ void setup() {
   pinMode(17, OUTPUT);
   pinMode(18, OUTPUT);
   pinMode(19, OUTPUT);
+
   Serial.begin(9600);
 }
 
@@ -71,6 +86,20 @@ void loop() {
    lcd.setCursor (0,1);
    lcd.print(msg);
   }
+
+
+  int MSB = digitalRead(20); //MSB = most significant bit
+  int LSB = digitalRead(21); //LSB = least significant bit
+  
+  int encoded = (MSB << 1) |LSB; //converting the 2 pin value to single number 
+  int sum = (lastEncoded << 2) | encoded; //adding it to the previous encoded value 
+  if(sum == 0b1101 || sum == 0b0100 || sum == 0b0010 || sum == 0b1011) encoderValue ++; 
+  if(sum == 0b1110 || sum == 0b0111 || sum == 0b0001 || sum == 0b1000) encoderValue --; 
+  if(encoded != lastEncoded){
+    Serial.println(encoderValue);
+  }
+  lastEncoded = encoded;
+
 }
 
 
