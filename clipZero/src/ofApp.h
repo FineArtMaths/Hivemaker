@@ -56,6 +56,7 @@ class ofApp : public ofBaseApp{
 		
 		//Microcomb
 		int combDelay;
+		int easeAmt;
 
 		// Bit crusher
 		float bcBitDepth;

@@ -4,13 +4,6 @@
  * A collection of "digital distortion" effects
  * that sound like a bitcrusher.
  * 
- * todo:
- * 		Make or replace the Lerper
- * 		Add a second parameter to each effect
- * 			Remaining ones are Lerper 7 comb
- * 			(Comb needs some work anyway)
- * 		Improve overall sound as appropriate
- * 
  */
 
 //--------------------------------------------------------------
@@ -84,6 +77,7 @@ void ofApp::setup(){
 	currLerpT = 0;
 	lerpAmtPerSample = 0.0f;
 	combDelay = 64;
+	easeAmt = 32;
 
 	// Bit Crusher Setup
 	bcBitDepth = 1024;		// max = 1024 but NB this does still introduce a small amount of noise.
@@ -124,7 +118,7 @@ float ofApp::getFreq(){
 }
 
 float ofApp::getOscSample(const float& t){
-	return sin(t);
+	return 0.65*sin(t) + 0.3*sin(2.5*t);
 }
 
 
@@ -174,21 +168,21 @@ void ofApp::update(){
 		wetMix = float(serialData[2])/1024.0;
 		dryMix = 1 - wetMix;
 		if(mode == 0){
-			clipThresh = ofMap(serialData[0], 0, 1024, 0.01, 0.5);
+			clipThresh = ofMap(serialData[0], 0, 1024, 0.001, 0.4);
 			clampToPoint = ofMap(serialData[1], 0, 1024, 0, 1);
 			cout << "Mode: " << modeNames[mode] << " (" << mode << "): ";
 			cout << "clipThresh: " << clipThresh << ", ";
 			cout << "clampToPoint: " << clampToPoint << ", ";
 			cout << "Mix: " << wetMix << endl;
 		} else if(mode == 1){
-			clipThresh = ofMap(serialData[0], 0, 1024, 0.01, 0.5);
+			clipThresh = ofMap(serialData[0], 0, 1024, 0.001, 0.4);
 			clampToPoint = ofMap(serialData[1], 0, 1024, 0, 1);
 			cout << "Mode: " << modeNames[mode] << " (" << mode << "); ";
 			cout << "clipThresh: " << clipThresh << ", ";
 			cout << "clampToPoint: " << clampToPoint << ", ";
 			cout << "Mix: " << wetMix << endl;
 		} else if(mode == 2){
-			absSkip = floor(serialData[0]/10);
+			absSkip = floor(serialData[0]/5)*2;
 			absMix = ofMap(serialData[1], 0, 1024, 0, 1);
 			cout << "Mode: " << modeNames[mode] << " (" << mode << "): ";
 			cout << "absSkip: " << absSkip << ", ";
@@ -203,19 +197,21 @@ void ofApp::update(){
 			cout << "Mix: " << wetMix << endl;
 		} else if(mode == 4){
 			foldAmount = ofMap(serialData[0], 0, 1024, 0, 2);
-			folderThresh = ofMap(serialData[1], 0, 1024, 0.2, 1);
+			folderThresh = ofMap(serialData[1], 0, 1024, 0.1, 1);
 			cout << "Mode: " << modeNames[mode] << " (" << mode << "): ";
 			cout << "foldAmount: " << foldAmount << ", ";
 			cout << "folderThresh: " << folderThresh << ", ";
 			cout << "Mix: " << wetMix << endl;
 		} else if(mode == 5){
-			lerpSteps = ofMap(serialData[0], 0, 1024, 1, 200);
+			lerpSteps = ofMap(serialData[0], 0, 1024, 1, 120);
 			cout << "Mode: " << modeNames[mode] << " (" << mode << "): ";
 			cout << "lerpSteps: " << lerpSteps << ", ";
 			//cout << "UNUSED: " << clampToPoint << ", ";
 			cout << "Mix: " << wetMix << endl;
 		} else if(mode == 6){
-			combDelay = ofMap(serialData[0], 0, 1024, 1, 200);
+			combDelay = ofMap(serialData[0], 0, 1024, 1, bufferSize/2);
+			combDelay = floor(combDelay) * 2;
+			easeAmt = floor(ofMap(serialData[1], 0, 1024, 0, bufferSize/2));
 			cout << "Mode: " << modeNames[mode] << " (" << mode << "): ";
 			cout << "combDelay: " << combDelay << ", ";
 			//cout << "UNUSED: " << clampToPoint << ", ";
@@ -242,7 +238,7 @@ void ofApp::update(){
 			cout << "coarse: " << coarse << ", ";
 			cout << "Mix: " << wetMix << endl;
 		} else if(mode == 9){
-			pulseWidth = ofMap(serialData[0], 0, 1024, -0.5, 0.5);
+			pulseWidth = ofMap(serialData[0], 0, 1024, 0.0018, 0.08);
 			middle = ofMap(serialData[1], 0, 1024, 0, 1);
 			cout << "Mode: " << modeNames[mode] << " (" << mode << "): ";
 			cout << "pulseWidth: " << pulseWidth << ", ";
@@ -300,8 +296,14 @@ void ofApp::audioOut(ofSoundBuffer & output){
 				if(abs(audioBuffer[i]) < 0.001){
 					samp = 0.0;
 				} else {
-					samp = abs(audioBuffer[i] * 2) - 1;
-					float samp2;
+					float avg = 0.0f;
+					for(int f = 0; f < audioBuffer.size(); f++){
+						avg += audioBuffer[f];
+					}
+					avg /= (2 * audioBuffer.size());
+					float a = abs(audioBuffer[i] * 2);
+					samp = a - avg;
+					float samp2 = 1.0f;
 					if(i - absSkip > 0){
 						samp2 = audioBuffer[i - absSkip];
 					} else {
@@ -321,15 +323,20 @@ void ofApp::audioOut(ofSoundBuffer & output){
 				}
 			} else if (mode == 5){
 				// Lerper
-				samp = audioBuffer[i] *(random()%3 - 1);
+				int lerpStepSize = output.size()/lerpSteps;
+				int prevLerpStep = lerpStepSize * floor(i/lerpStepSize);
+				int nextLerpStep = prevLerpStep + lerpStepSize;
+				if(nextLerpStep > output.size() - 1){
+					nextLerpStep = output.size() - 1;
+				}
+				samp = audioBuffer[prevLerpStep] + (audioBuffer[nextLerpStep] - audioBuffer[prevLerpStep])*float(i)/output.size();
 			} else if (mode == 6){
 				// Microcomb
 				int offset = i - combDelay;
 				if(offset < 0){
 					offset += audioBuffer.size();
 				}
-				float easer = 1;
-				float easeAmt = 32;
+				float easer = 1.0f;
 				if(i < easeAmt){
 					easer = float(i)/easeAmt;
 				} else if (i > audioBuffer.size() - easeAmt){
@@ -340,7 +347,7 @@ void ofApp::audioOut(ofSoundBuffer & output){
 				if(bcSamplePtr == 0){
 					bcPrevSampleValue = audioBuffer[i];
 				}
-				if(abs(audioBuffer[i]) < 0.001){
+				if(abs(audioBuffer[i]) < 0.005){
 					samp = 0.0;
 				} else {
 					samp = floor(bcPrevSampleValue * bcBitDepth)/bcBitDepth;
