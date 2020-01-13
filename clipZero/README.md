@@ -1,30 +1,3 @@
-# About emptyExample
+# ClipZero
 
-![Screenshot of emptyExample](emptyExample.png)
-
-### Learning Objectives
-
-This example is the simplest possible openFrameworks app! It does nothing. 
-
-...Well, *almost* nothing. Although it may not be apparent, the emptyExample activates all of the default system states. (For example, it sets the default fill color to white; it just doesn't happen to draw anything with it.)
-
-The emptyExample is great for making sure that your openFrameworks development environment is compiling properly. It can also be useful as a "starter template" for making simple programs. 
-
-The emptyExample will help you understand what are the bare necessities of an openFrameworks program. In this regard, you can think of it as a "Hello World" for OF. 
-
-
-### Expected Behavior
-
-When launching this app, you should see a light-gray screen. 
-
-* There's no interaction. 
-* There's nothing to see. 
-* That's it. 
-
-Instructions for using the app:
-
-* There's nothing to do. Move along.
-
-### Other classes used in this file
-
-This example uses no other classes.
+This is a small collection of "clean distortion" DSP effects. It's designed to run on Raspberry Pi with an Arduino managing hardware controls. The front panel is two pots that behave differently depending on the chosen algorithm, plus a rotary encoder for choosing the algo. The project's main purpose was to determine a workable hardware setup and the minimal oF code to make it work, and to experiment with some interesting sounds that arise from sample-by-sample arithmetic.
